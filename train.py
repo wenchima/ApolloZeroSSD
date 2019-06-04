@@ -162,7 +162,14 @@ def train():
             adjust_learning_rate(optimizer, args.gamma, step_index)
 
         # load train data
-        images, targets = next(batch_iterator)
+        #images, targets = next(batch_iterator)    ##################### wenchi
+        ##################### wenchi #################################
+        try:
+            images, targets = next(batch_iterator)
+        except StopIteration:
+            batch_iterator = iter(data_loader)
+            images, targets = next(batch_iterator)
+        ##################### wenchi #################################
 
         if args.cuda:
             images = Variable(images.cuda())

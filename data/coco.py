@@ -8,7 +8,8 @@ import torchvision.transforms as transforms
 import cv2
 import numpy as np
 
-COCO_ROOT = osp.join(HOME, 'data/coco/')
+#COCO_ROOT = osp.join(HOME, 'data/coco/')                                    # wenchi
+COCO_ROOT = osp.join(HOME, 'ghwwc/ssd.pytorch-master/data/')                 # wenchi
 IMAGES = 'images'
 ANNOTATIONS = 'annotations'
 COCO_API = 'PythonAPI'
@@ -83,11 +84,13 @@ class COCODetection(data.Dataset):
         in the target (bbox) and transforms it.
     """
 
-    def __init__(self, root, image_set='trainval35k', transform=None,
+    #def __init__(self, root, image_set='trainval35k', transform=None,
+    def __init__(self, root, image_set='train2017', transform=None,                          # wenchi
                  target_transform=COCOAnnotationTransform(), dataset_name='MS COCO'):
         sys.path.append(osp.join(root, COCO_API))
         from pycocotools.coco import COCO
-        self.root = osp.join(root, IMAGES, image_set)
+        #self.root = osp.join(root, IMAGES, image_set)
+        self.root = osp.join(root, image_set)                     # wenchi
         self.coco = COCO(osp.join(root, ANNOTATIONS,
                                   INSTANCES_SET.format(image_set)))
         self.ids = list(self.coco.imgToAnns.keys())
@@ -124,7 +127,8 @@ class COCODetection(data.Dataset):
         target = self.coco.loadAnns(ann_ids)
         path = osp.join(self.root, self.coco.loadImgs(img_id)[0]['file_name'])
         assert osp.exists(path), 'Image path does not exist: {}'.format(path)
-        img = cv2.imread(osp.join(self.root, path))
+        #img = cv2.imread(osp.join(self.root, path))
+        img = cv2.imread(path)                                  # wenchi
         height, width, _ = img.shape
         if self.target_transform is not None:
             target = self.target_transform(target, width, height)
