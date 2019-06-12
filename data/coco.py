@@ -9,7 +9,7 @@ import cv2
 import numpy as np
 
 #COCO_ROOT = osp.join(HOME, 'data/coco/')                                    # wenchi
-COCO_ROOT = osp.join(HOME, 'ghwwc/ssd.pytorch-master/data/')                 # wenchi
+COCO_ROOT = osp.join('data/')                 # wenchi
 IMAGES = 'images'
 ANNOTATIONS = 'annotations'
 COCO_API = 'PythonAPI'
