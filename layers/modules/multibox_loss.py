@@ -57,7 +57,16 @@ class MultiBoxLoss(nn.Module):
             targets (tensor): Ground truth boxes and labels for a batch,
                 shape: [batch_size,num_objs,5] (last idx is the label).
         """
-        loc_data, conf_data, priors = predictions
+        loc_data, conf_data, locsc_data, priors = predictions
+
+        '''
+        # for test, kaidong
+        print('loss', 'loc dim', loc_data.shape)
+        print('loss', 'conf dim', conf_data.shape)
+        print('loss', 'locsc dim', locsc_data.shape)
+        print('loss', 'priors dim', priors.shape)
+        '''
+
         num = loc_data.size(0)
         priors = priors[:loc_data.size(1), :]
         num_priors = (priors.size(0))
@@ -66,15 +75,20 @@ class MultiBoxLoss(nn.Module):
         # match priors (default boxes) and ground truth boxes
         loc_t = torch.Tensor(num, num_priors, 4)
         conf_t = torch.LongTensor(num, num_priors)
+
+        # loc score target, kaidong
+        locsc_t = torch.FloatTensor(num, num_priors)
+
         for idx in range(num):
             truths = targets[idx][:, :-1].data
             labels = targets[idx][:, -1].data
             defaults = priors.data
             match(self.threshold, truths, defaults, self.variance, labels,
-                  loc_t, conf_t, idx)
+                  loc_t, conf_t, locsc_t, idx)
         if self.use_gpu:
             loc_t = loc_t.cuda()
             conf_t = conf_t.cuda()
+            locsc_t = locsc_t.cuda()
         # wrap targets
         loc_t = Variable(loc_t, requires_grad=False)
         conf_t = Variable(conf_t, requires_grad=False)
@@ -82,9 +96,30 @@ class MultiBoxLoss(nn.Module):
         pos = conf_t > 0
         num_pos = pos.sum(dim=1, keepdim=True)
 
+        # prepare dimension, kaidong
+        locsc_data.squeeze_(locsc_data.dim() - 1)
+        locsc_data = locsc_data[pos]
+        locsc_t = locsc_t[pos]
+
+        '''
+        # for test, kaidong
+        print('loss', 'pos', pos.shape)
+        print('loss', 'ls dt', locsc_data.shape)
+        print('loss', 'ls tg', locsc_t.shape)
+        print('loss', 'ls 05', locsc_t[0:5])
+        '''
+
+        # rid of loc sc < threshold, kaidong
+        loss_ls = F.smooth_l1_loss(locsc_data, locsc_t, size_average=False)
+
         # Localization Loss (Smooth L1)
         # Shape: [batch,num_priors,4]
         pos_idx = pos.unsqueeze(pos.dim()).expand_as(loc_data)
+
+        # for test, kaidong
+        #print('loss', 'pos i', pos_idx.shape)
+
+
         loc_p = loc_data[pos_idx].view(-1, 4)
         loc_t = loc_t[pos_idx].view(-1, 4)
         loss_l = F.smooth_l1_loss(loc_p, loc_t, size_average=False)
@@ -116,4 +151,5 @@ class MultiBoxLoss(nn.Module):
         N = N.float()      ############ wenchi
         loss_l /= N
         loss_c /= N
-        return loss_l, loss_c
+        loss_ls /= N
+        return loss_l, loss_c, loss_ls

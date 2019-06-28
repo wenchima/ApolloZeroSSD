@@ -40,8 +40,11 @@ class SSD(nn.Module):
         self.L2Norm = L2Norm(512, 20)
         self.extras = nn.ModuleList(extras)
 
+
+        # adding loc score head
         self.loc = nn.ModuleList(head[0])
         self.conf = nn.ModuleList(head[1])
+        self.locsc = nn.ModuleList(head[2])
 
         if phase == 'test':
             self.softmax = nn.Softmax(dim=-1)
@@ -69,6 +72,7 @@ class SSD(nn.Module):
         sources = list()
         loc = list()
         conf = list()
+        locsc = list()
 
         # apply vgg up to conv4_3 relu
         for k in range(23):
@@ -89,12 +93,14 @@ class SSD(nn.Module):
                 sources.append(x)
 
         # apply multibox head to source layers
-        for (x, l, c) in zip(sources, self.loc, self.conf):
+        for (x, l, c, s) in zip(sources, self.loc, self.conf, self.locsc):
             loc.append(l(x).permute(0, 2, 3, 1).contiguous())
             conf.append(c(x).permute(0, 2, 3, 1).contiguous())
+            locsc.append(s(x).permute(0, 2, 3, 1).contiguous())
 
         loc = torch.cat([o.view(o.size(0), -1) for o in loc], 1)
         conf = torch.cat([o.view(o.size(0), -1) for o in conf], 1)
+        locsc = torch.cat([o.view(o.size(0), -1) for o in locsc], 1)
         if self.phase == "test":
             output = self.detect(
                 loc.view(loc.size(0), -1, 4),                   # loc preds
@@ -106,6 +112,7 @@ class SSD(nn.Module):
             output = (
                 loc.view(loc.size(0), -1, 4),
                 conf.view(conf.size(0), -1, self.num_classes),
+                locsc.view(locsc.size(0), -1, 1),
                 self.priors
             )
         return output
@@ -162,22 +169,28 @@ def add_extras(cfg, i, batch_norm=False):
         in_channels = v
     return layers
 
-
+# adding sccore head, locsc_layers, kaidong
+# one loc score for one anchor
 def multibox(vgg, extra_layers, cfg, num_classes):
     loc_layers = []
     conf_layers = []
+    locsc_layers = []
     vgg_source = [21, -2]
     for k, v in enumerate(vgg_source):
         loc_layers += [nn.Conv2d(vgg[v].out_channels,
                                  cfg[k] * 4, kernel_size=3, padding=1)]
         conf_layers += [nn.Conv2d(vgg[v].out_channels,
                         cfg[k] * num_classes, kernel_size=3, padding=1)]
+        locsc_layers += [nn.Conv2d(vgg[v].out_channels,
+                        cfg[k] * 1, kernel_size=3, padding=1)]
     for k, v in enumerate(extra_layers[1::2], 2):
         loc_layers += [nn.Conv2d(v.out_channels, cfg[k]
                                  * 4, kernel_size=3, padding=1)]
         conf_layers += [nn.Conv2d(v.out_channels, cfg[k]
                                   * num_classes, kernel_size=3, padding=1)]
-    return vgg, extra_layers, (loc_layers, conf_layers)
+        locsc_layers += [nn.Conv2d(v.out_channels, cfg[k]
+                                   * 1, kernel_size=3, padding=1)]
+    return vgg, extra_layers, (loc_layers, conf_layers, locsc_layers)
 
 
 base = {

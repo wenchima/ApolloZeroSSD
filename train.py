@@ -131,6 +131,7 @@ def train():
     # loss counters
     loc_loss = 0
     conf_loss = 0
+    locsc_loss = 0
     epoch = 0
     print('Loading the dataset...')
 
@@ -160,11 +161,12 @@ def train():
         #    break
 
         if args.visdom and iteration != 0 and (iteration % epoch_size == 0):
-            update_vis_plot(epoch, loc_loss, conf_loss, epoch_plot, None,
+            update_vis_plot(epoch, loc_loss, conf_loss, locsc_loss, epoch_plot, None,
                             'append', epoch_size)
             # reset epoch loss counters
             loc_loss = 0
             conf_loss = 0
+            locsc_loss = 0
             epoch += 1
 
         if iteration in cfg['lr_steps']:
@@ -192,20 +194,21 @@ def train():
         out = net(images)
         # backprop
         optimizer.zero_grad()
-        loss_l, loss_c = criterion(out, targets)
-        loss = loss_l + loss_c
+        loss_l, loss_c, loss_ls = criterion(out, targets)
+        loss = loss_l + loss_c + loss_ls
         loss.backward()
         optimizer.step()
         t1 = time.time()
         loc_loss += loss_l.data[0]
         conf_loss += loss_c.data[0]
+        locsc_loss += loss_ls.data[0]
 
         if iteration % 10 == 0:
             print('timer: %.4f sec.' % (t1 - t0))
-            print('iter ' + repr(iteration) + ' || Loss: %.4f ||' % (loss.data[0]), end=' ')
+            print('iter ' + repr(iteration) + ' || Loss: %.4f, Loc Loss: %.4f ||' % (loss.data[0], loss_ls.data[0]), end=' ')
 
         if args.visdom:
-            update_vis_plot(iteration, loss_l.data[0], loss_c.data[0],
+            update_vis_plot(iteration, loss_l.data[0], loss_c.data[0], loss_ls.data[0],
                             iter_plot, epoch_plot, 'append')
 
         if iteration != 0 and iteration % 5000 == 0:

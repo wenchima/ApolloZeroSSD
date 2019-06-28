@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import torch
+from torch.autograd import Variable
 
 
 def point_form(boxes):
@@ -68,7 +69,7 @@ def jaccard(box_a, box_b):
     return inter / union  # [A,B]
 
 
-def match(threshold, truths, priors, variances, labels, loc_t, conf_t, idx):
+def match(threshold, truths, priors, variances, labels, loc_t, conf_t, locsc_t, idx):
     """Match each prior box with the ground truth box of the highest jaccard
     overlap, encode the bounding boxes, then return the matched indices
     corresponding to both confidence and location preds.
@@ -97,6 +98,10 @@ def match(threshold, truths, priors, variances, labels, loc_t, conf_t, idx):
     best_truth_overlap, best_truth_idx = overlaps.max(0, keepdim=True)
     best_truth_idx.squeeze_(0)
     best_truth_overlap.squeeze_(0)
+
+    # get target iou, thresholding not done here, kaidong
+    iou_t = Variable(best_truth_overlap, requires_grad=False)
+
     best_prior_idx.squeeze_(1)
     best_prior_overlap.squeeze_(1)
     best_truth_overlap.index_fill_(0, best_prior_idx, 2)  # ensure best prior
@@ -110,6 +115,7 @@ def match(threshold, truths, priors, variances, labels, loc_t, conf_t, idx):
     loc = encode(matches, priors, variances)
     loc_t[idx] = loc    # [num_priors,4] encoded offsets to learn
     conf_t[idx] = conf  # [num_priors] top class label for each prior
+    locsc_t[idx] = iou_t
 
 
 def encode(matched, priors, variances):
