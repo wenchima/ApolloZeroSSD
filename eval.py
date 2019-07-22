@@ -14,6 +14,7 @@ from data import VOC_CLASSES as labelmap
 import torch.utils.data as data
 
 from ssd import build_ssd
+from utils.logging import Logger
 
 import sys
 import os
@@ -38,7 +39,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument('--trained_model',
                     default='weights/ssd300_mAP_77.43_v2.pth', type=str,
                     help='Trained state_dict file path to open')
-parser.add_argument('--save_folder', default='eval/', type=str,
+parser.add_argument('--save_folder', default='save/eval/test/', type=str,
                     help='File path to save results')
 parser.add_argument('--confidence_threshold', default=0.01, type=float,
                     help='Detection confidence threshold')
@@ -55,6 +56,11 @@ args = parser.parse_args()
 
 if not os.path.exists(args.save_folder):
     os.mkdir(args.save_folder)
+
+nm_mdl = ((args.trained_model.split('/'))[-1]).split('.')[0]
+
+sys.stdout = Logger(os.path.join(args.save_folder,
+                    'log0_'+ nm_mdl +'.txt'))
 
 if torch.cuda.is_available():
     if args.cuda:
@@ -136,7 +142,7 @@ def get_output_dir(name, phase):
 def get_voc_results_file_template(image_set, cls):
     # VOCdevkit/VOC2007/results/det_test_aeroplane.txt
     filename = 'det_' + image_set + '_%s.txt' % (cls)
-    filedir = os.path.join(devkit_path, 'results')
+    filedir = os.path.join(args.save_folder, 'results')
     if not os.path.exists(filedir):
         os.makedirs(filedir)
     path = os.path.join(filedir, filename)
@@ -161,7 +167,7 @@ def write_voc_results_file(all_boxes, dataset):
 
 
 def do_python_eval(output_dir='output', use_07=True):
-    cachedir = os.path.join(devkit_path, 'annotations_cache')
+    cachedir = os.path.join(args.save_folder, 'annotations_cache')
     aps = []
     # The PASCAL VOC metric changed in 2010
     use_07_metric = use_07
@@ -375,6 +381,8 @@ def test_net(save_folder, net, cuda, dataset, transform, top_k,
     output_dir = get_output_dir('ssd300_120000', set_type)
     det_file = os.path.join(output_dir, 'detections.pkl')
 
+    # for test, kaidong
+    #for i in range(20):
     for i in range(num_images):
         im, gt, h, w = dataset.pull_item(i)
 
