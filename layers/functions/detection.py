@@ -21,7 +21,7 @@ class Detect(Function):
         self.conf_thresh = conf_thresh
         self.variance = cfg['variance']
 
-    def forward(self, loc_data, conf_data, prior_data):
+    def forward(self, loc_data, loc_score, conf_data, prior_data):
         """
         Args:
             loc_data: (tensor) Loc preds from loc layers
@@ -44,8 +44,16 @@ class Detect(Function):
             conf_scores = conf_preds[i].clone()
 
             for cl in range(1, self.num_classes):
-                c_mask = conf_scores[cl].gt(self.conf_thresh)
-                scores = conf_scores[cl][c_mask]
+
+                # multiplying loc score, kaidong
+                scores = conf_scores[cl] * loc_score[i]
+                # for test, kaidong
+                #import pdb; pdb.set_trace()
+                c_mask = scores.gt(self.conf_thresh)
+                scores = scores[c_mask]
+
+                #c_mask = conf_scores[cl].gt(self.conf_thresh)
+                #scores = conf_scores[cl][c_mask]
                 if scores.size(0) == 0:
                     continue
                 l_mask = c_mask.unsqueeze(1).expand_as(decoded_boxes)

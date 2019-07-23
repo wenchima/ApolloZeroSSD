@@ -101,9 +101,15 @@ class SSD(nn.Module):
         loc = torch.cat([o.view(o.size(0), -1) for o in loc], 1)
         conf = torch.cat([o.view(o.size(0), -1) for o in conf], 1)
         locsc = torch.cat([o.view(o.size(0), -1) for o in locsc], 1)
+
+        # for test, kaidong
+        #import pdb; pdb.set_trace()
+
+
         if self.phase == "test":
             output = self.detect(
                 loc.view(loc.size(0), -1, 4),                   # loc preds
+                locsc,
                 self.softmax(conf.view(conf.size(0), -1,
                              self.num_classes)),                # conf preds
                 self.priors.type(type(x.data))                  # default boxes
