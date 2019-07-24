@@ -381,7 +381,8 @@ def test_net(save_folder, net, cuda, dataset, transform, top_k,
     output_dir = get_output_dir('ssd300_120000', set_type)
     det_file = os.path.join(output_dir, 'detections.pkl')
 
-    # for test, kaidong
+    # for test, kaidongs
+    #import pdb; pdb.set_trace()
     #for i in range(20):
     for i in range(num_images):
         im, gt, h, w = dataset.pull_item(i)

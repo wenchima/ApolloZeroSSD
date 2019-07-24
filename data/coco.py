@@ -33,11 +33,13 @@ COCO_CLASSES = ('person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
 
 def get_label_map(label_file):
     label_map = {}
+    iv_label_map = {}
     labels = open(label_file, 'r')
     for line in labels:
         ids = line.split(',')
         label_map[int(ids[0])] = int(ids[1])
-    return label_map
+        iv_label_map[int(ids[1])] = int(ids[0])
+    return label_map, iv_label_map
 
 
 class COCOAnnotationTransform(object):
@@ -45,7 +47,7 @@ class COCOAnnotationTransform(object):
     Initilized with a dictionary lookup of classnames to indexes
     """
     def __init__(self):
-        self.label_map = get_label_map(osp.join(COCO_ROOT, 'coco_labels.txt'))
+        self.label_map, self.inverse_label_map = get_label_map(osp.join(COCO_ROOT, 'coco_labels.txt'))
 
     def __call__(self, target, width, height):
         """
@@ -97,6 +99,7 @@ class COCODetection(data.Dataset):
         self.transform = transform
         self.target_transform = target_transform
         self.name = dataset_name
+        self.img_set = image_set
 
     def __getitem__(self, index):
         """
